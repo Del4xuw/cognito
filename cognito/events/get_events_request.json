@@ -1,0 +1,18 @@
+{
+  "httpMethod": "GET",
+  "path": "/events",
+  "headers": {
+    "Authorization": "Bearer <REPLACE_WITH_VALID_ACCESS_TOKEN>"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "isBase64Encoded": false,
+  "requestContext": {
+    "stage": "dev",
+    "authorizer": {
+      "username": "testuser@example.com",
+      "groups": "deployers,viewers",
+      "sub": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    }
+  }
+}

@@ -1,0 +1,284 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless Authorization System with existing Cognito User Pool,
+  API Gateway Lambda Authorizer, DynamoDB, and EventBridge.
+
+# ---------------------------------------------------------------------------
+# Parameters – reference the EXISTING Cognito User Pool (never create one)
+# ---------------------------------------------------------------------------
+Parameters:
+  CognitoUserPoolId:
+    Type: String
+    Default: us-east-1_Ibp76ZpqU
+    Description: Existing Cognito User Pool ID
+
+  CognitoClientId:
+    Type: String
+    Default: 1tjaebcijmiaueqq6gp6drbkci
+    Description: Existing Cognito App Client ID
+
+  CognitoRegion:
+    Type: String
+    Default: us-east-1
+    Description: AWS Region of the Cognito User Pool
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+
+# ---------------------------------------------------------------------------
+# Globals – shared Lambda configuration
+# ---------------------------------------------------------------------------
+Globals:
+  Function:
+    Runtime: python3.11
+    MemorySize: 256
+    Timeout: 30
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
+        COGNITO_CLIENT_ID: !Ref CognitoClientId
+        COGNITO_REGION: !Ref CognitoRegion
+        ENVIRONMENT: !Ref Environment
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # -------------------------------------------------------------------------
+  # API Gateway
+  # -------------------------------------------------------------------------
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionPayloadType: TOKEN
+            Identity:
+              Header: Authorization
+              ReauthorizeEvery: 300
+
+  # -------------------------------------------------------------------------
+  # Lambda Authorizer – validates JWT & checks DynamoDB route permissions
+  # -------------------------------------------------------------------------
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-authorizer
+      Handler: handler.lambda_handler
+      CodeUri: src/authorizer/
+      Timeout: 10
+      Environment:
+        Variables:
+          ROUTES_SCOPES_TABLE: !Ref RoutesScopesTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref RoutesScopesTable
+
+  # -------------------------------------------------------------------------
+  # Auth API – public login / refresh endpoints (no authorizer)
+  # -------------------------------------------------------------------------
+  AuthApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-auth-api
+      Handler: handler.lambda_handler
+      CodeUri: src/auth_api/
+      Events:
+        Authorize:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /auth/authorize
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        Refresh:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /auth/refresh
+            Method: POST
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:InitiateAuth
+              Resource: !Sub arn:aws:cognito-idp:${CognitoRegion}:${AWS::AccountId}:userpool/${CognitoUserPoolId}
+
+  # -------------------------------------------------------------------------
+  # Events API – protected CRUD endpoints
+  # -------------------------------------------------------------------------
+  EventsApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-events-api
+      Handler: handler.lambda_handler
+      CodeUri: src/events_api/
+      Environment:
+        Variables:
+          EVENTS_TABLE: !Ref EventsTable
+          EVENTBRIDGE_BUS_NAME: !Ref EventBridgeBus
+      Events:
+        ListEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /events
+            Method: GET
+        CreateEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /events
+            Method: POST
+        GetEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /events/{eventId}
+            Method: GET
+        DeleteEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /events/{eventId}
+            Method: DELETE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+        - EventBridgePutEventsPolicy:
+            EventBusName: !Ref EventBridgeBus
+
+  # -------------------------------------------------------------------------
+  # DynamoDB – Routes & Scopes (authorization rules)
+  # -------------------------------------------------------------------------
+  RoutesScopesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-routes-scopes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: route
+          AttributeType: S
+        - AttributeName: method
+          AttributeType: S
+      KeySchema:
+        - AttributeName: route
+          KeyType: HASH
+        - AttributeName: method
+          KeyType: RANGE
+
+  # -------------------------------------------------------------------------
+  # DynamoDB – Events
+  # -------------------------------------------------------------------------
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-events
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+        - AttributeName: visibility
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: visibility-createdAt-index
+          KeySchema:
+            - AttributeName: visibility
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # -------------------------------------------------------------------------
+  # EventBridge – custom event bus
+  # -------------------------------------------------------------------------
+  EventBridgeBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub ${AWS::StackName}-event-bus
+
+  # -------------------------------------------------------------------------
+  # CloudWatch Log Groups (7-day retention for dev)
+  # -------------------------------------------------------------------------
+  AuthorizerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AuthorizerFunction}
+      RetentionInDays: 7
+
+  AuthApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AuthApiFunction}
+      RetentionInDays: 7
+
+  EventsApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${EventsApiFunction}
+      RetentionInDays: 7
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/
+
+  AuthorizerFunctionArn:
+    Description: Authorizer Lambda ARN
+    Value: !GetAtt AuthorizerFunction.Arn
+
+  AuthApiFunctionArn:
+    Description: Auth API Lambda ARN
+    Value: !GetAtt AuthApiFunction.Arn
+
+  EventsApiFunctionArn:
+    Description: Events API Lambda ARN
+    Value: !GetAtt EventsApiFunction.Arn
+
+  RoutesScopesTableName:
+    Description: Routes & Scopes DynamoDB table name
+    Value: !Ref RoutesScopesTable
+
+  RoutesScopesTableArn:
+    Description: Routes & Scopes DynamoDB table ARN
+    Value: !GetAtt RoutesScopesTable.Arn
+
+  EventsTableName:
+    Description: Events DynamoDB table name
+    Value: !Ref EventsTable
+
+  EventsTableArn:
+    Description: Events DynamoDB table ARN
+    Value: !GetAtt EventsTable.Arn
+
+  EventBridgeBusName:
+    Description: EventBridge bus name
+    Value: !Ref EventBridgeBus
+
+  EventBridgeBusArn:
+    Description: EventBridge bus ARN
+    Value: !GetAtt EventBridgeBus.Arn

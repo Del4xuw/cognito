@@ -1,0 +1,12 @@
+{
+  "httpMethod": "POST",
+  "path": "/auth/authorize",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"username\": \"testuser@example.com\", \"password\": \"YourPassword123!\"}",
+  "isBase64Encoded": false,
+  "requestContext": {
+    "stage": "dev"
+  }
+}
