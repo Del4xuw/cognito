@@ -10,7 +10,11 @@ s3_prefix = "cognito-auth-system"
 region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "CognitoUserPoolId=us-east-1_Ibp76ZpqU CognitoClientId=1tjaebcijmiaueqq6gp6drbkci CognitoRegion=us-east-1 Environment=dev"
+parameter_overrides = "CognitoUserPoolId=\"us-east-1_Ibp76ZpqU\" CognitoClientId=\"1tjaebcijmiaueqq6gp6drbkci\" CognitoRegion=\"us-east-1\" Environment=\"dev\""
+image_repositories = []
 
 [default.local_start_api.parameters]
 warm_containers = "EAGER"
+
+[default.global.parameters]
+region = "us-east-1"

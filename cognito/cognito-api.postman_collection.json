@@ -1,0 +1,150 @@
+{
+  "info": {
+    "name": "Cognito Auth System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://xcjnl5kbhe.execute-api.us-east-1.amazonaws.com/dev"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('access_token', jsonData.tokens.AccessToken);",
+              "    console.log('Token saved:', jsonData.tokens.AccessToken.substring(0, 20) + '...');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"test@example.com\",\n  \"password\": \"MyNewPass123!\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/authorize",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "authorize"]
+        }
+      }
+    },
+    {
+      "name": "2. List Events",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        }
+      }
+    },
+    {
+      "name": "3. Create Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Deployment v1.0\",\n  \"description\": \"First production deployment\",\n  \"visibility\": \"public\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/events",
+          "host": ["{{base_url}}"],
+          "path": ["events"]
+        }
+      }
+    },
+    {
+      "name": "4. Get Event by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events/{{event_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{event_id}}"]
+        }
+      }
+    },
+    {
+      "name": "5. Delete Event",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/events/{{event_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["events", "{{event_id}}"]
+        }
+      }
+    },
+    {
+      "name": "6. Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh_token\": \"YOUR_REFRESH_TOKEN_HERE\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/refresh",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "refresh"]
+        }
+      }
+    }
+  ]
+}
