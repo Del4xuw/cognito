@@ -33,6 +33,21 @@ class PolicyBuilder:
             Authorizer response dict with ``principalId``, ``policyDocument``,
             and optional ``context``.
         """
+        # Extract base ARN and apply wildcard to allow all methods/resources
+        # Format: arn:aws:execute-api:region:account:api-id/stage/method/resource
+        # We want: arn:aws:execute-api:region:account:api-id/stage/*/*
+        
+        resource_parts = resource.split('/')
+        if len(resource_parts) >= 2:
+            # Build wildcard resource: arn:aws:execute-api:region:account:api-id/stage/*/*
+            wildcard_resource = f"{resource_parts[0]}/{resource_parts[1]}/*/*"
+            logger.info(f"Original resource: {resource}")
+            logger.info(f"Wildcard resource: {wildcard_resource}")
+        else:
+            # Fallback to exact resource if parsing fails
+            wildcard_resource = resource
+            logger.warning(f"Unable to parse resource ARN, using exact match: {resource}")
+
         policy: dict[str, Any] = {
             "principalId": principal_id,
             "policyDocument": {
@@ -41,7 +56,7 @@ class PolicyBuilder:
                     {
                         "Action": "execute-api:Invoke",
                         "Effect": effect,
-                        "Resource": resource,
+                        "Resource": wildcard_resource,  # ← Ahora usa wildcard
                     }
                 ],
             },
@@ -57,4 +72,5 @@ class PolicyBuilder:
                     sanitized[key] = str(value)
             policy["context"] = sanitized
 
+        logger.info(f"Generated policy for principal {principal_id}: {effect} on {wildcard_resource}")
         return policy

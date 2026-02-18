@@ -15,7 +15,7 @@ Parameters:
 
   CognitoClientId:
     Type: String
-    Default: 1tjaebcijmiaueqq6gp6drbkci
+    Default: 5g48nkghk7pvbdu8joaa2kvdi8
     Description: Existing Cognito App Client ID
 
   CognitoRegion:
