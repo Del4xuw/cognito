@@ -1,0 +1,22 @@
+{
+  "name": "authorizer",
+  "version": "1.0.0",
+  "description": "Lambda Token Authorizer - validates JWT and checks DynamoDB route permissions",
+  "main": "handler.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.500.0",
+    "@aws-sdk/lib-dynamodb": "^3.500.0",
+    "cognito-auth-system": "file:../..",
+    "jose": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.131",
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.3.0"
+  }
+}

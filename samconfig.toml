@@ -1,7 +1,7 @@
 version = 0.1
 
 [default.build.parameters]
-use_container = true
+use_container = false
 
 [default.deploy.parameters]
 stack_name = "cognito-auth-system"

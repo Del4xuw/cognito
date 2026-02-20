@@ -34,7 +34,7 @@ Parameters:
 # ---------------------------------------------------------------------------
 Globals:
   Function:
-    Runtime: python3.11
+    Runtime: nodejs20.x
     MemorySize: 256
     Timeout: 30
     Architectures:
@@ -75,7 +75,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-authorizer
-      Handler: handler.lambda_handler
+      Handler: handler.handler
       CodeUri: src/authorizer/
       Timeout: 10
       Environment:
@@ -84,6 +84,16 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RoutesScopesTable
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - handler.ts
+        External:
+          - '@aws-sdk/*'
 
   # -------------------------------------------------------------------------
   # Auth API – public login / refresh endpoints (no authorizer)
@@ -92,7 +102,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-auth-api
-      Handler: handler.lambda_handler
+      Handler: handler.handler
       CodeUri: src/auth_api/
       Events:
         Authorize:
@@ -118,6 +128,16 @@ Resources:
               Action:
                 - cognito-idp:InitiateAuth
               Resource: !Sub arn:aws:cognito-idp:${CognitoRegion}:${AWS::AccountId}:userpool/${CognitoUserPoolId}
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - handler.ts
+        External:
+          - '@aws-sdk/*'
 
   # -------------------------------------------------------------------------
   # Events API – protected CRUD endpoints
@@ -126,7 +146,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${AWS::StackName}-events-api
-      Handler: handler.lambda_handler
+      Handler: handler.handler
       CodeUri: src/events_api/
       Environment:
         Variables:
@@ -162,6 +182,16 @@ Resources:
             TableName: !Ref EventsTable
         - EventBridgePutEventsPolicy:
             EventBusName: !Ref EventBridgeBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - handler.ts
+        External:
+          - '@aws-sdk/*'
 
   # -------------------------------------------------------------------------
   # DynamoDB – Routes & Scopes (authorization rules)

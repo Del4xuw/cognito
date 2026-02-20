@@ -1,0 +1,21 @@
+{
+  "name": "cognito-auth-system",
+  "version": "1.0.0",
+  "description": "Serverless Authorization System with Cognito, API Gateway Lambda Authorizer, DynamoDB, and EventBridge",
+  "private": true,
+  "scripts": {
+    "build": "sam build",
+    "deploy": "sam deploy",
+    "build:deploy": "sam build && sam deploy",
+    "seed": "npx ts-node scripts/seed-dynamodb.ts",
+    "test:api": "npx ts-node scripts/test-api.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

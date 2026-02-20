@@ -1,0 +1,18 @@
+{
+  "name": "cognito-auth-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for the Cognito Auth System",
+  "scripts": {
+    "seed": "npx ts-node seed_dynamodb.ts",
+    "test-api": "npx ts-node test_api.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.500.0",
+    "@aws-sdk/lib-dynamodb": "^3.500.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  }
+}

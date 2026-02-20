@@ -1,0 +1,20 @@
+{
+  "name": "auth-api",
+  "version": "1.0.0",
+  "description": "Auth API Lambda - public login and token refresh endpoints",
+  "main": "handler.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.500.0",
+    "cognito-auth-system": "file:../.."
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.131",
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.3.0"
+  }
+}
